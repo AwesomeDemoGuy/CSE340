@@ -62,6 +62,8 @@ Token Parser::expect(TokenType expected_type)
 //     }
 // }
 
+vector<poly_decl_t> polynomials; // global data structure
+
 void Parser::parse_program() {
     // program -> tasks_section poly_section execute_section inputs_section
     parse_tasks_section();
@@ -194,23 +196,37 @@ void Parser::parse_poly_section() {
 void Parser::parse_poly_decl_list() {
     // poly_decl_list -> poly_decl
     // poly_decl_list -> poly_decl poly_decl_list
-    parse_poly_decl();
+    poly_decl_t poly_decl = parse_poly_decl();
+    if (polynomials.size() > 0) {
+        for (int i = 0; i < polynomials.size(); i++) {
+            if (polynomials[i].header.name.lexeme == poly_decl.header.name.lexeme) {
+                cout << "Semantic Error Code DMT-12: <line no 1> <line no 2> ... <line no k>";
+                exit(1);
+            }
+        }
+    }
+    polynomials.push_back(poly_decl);
     Token t = lexer.peek(1);
     if (t.token_type == ID) {
         parse_poly_decl_list();
     }
 }
 
-void Parser::parse_poly_decl() {
+poly_decl_t Parser::parse_poly_decl() {
     // poly_decl -> poly_header EQUAL poly_body SEMICOLON
-    parse_poly_header();
+
+    poly_decl_t decl;
+    decl.header = parse_poly_header();
     expect(EQUAL);
-    parse_poly_body();
+    decl.body = parse_poly_body();
     expect(SEMICOLON);
+    return decl;
 }
 
 void Parser::parse_poly_body() {
     // poly_body -> term_list
+    poly_body b;
+    
     parse_term_list();
 }
 
@@ -302,32 +318,47 @@ void Parser::parse_coefficient() {
     expect(NUM);
 }
 
-void Parser::parse_poly_header() {
+poly_header_t Parser::parse_poly_header() {
     // poly_header -> poly_name
     // poly_header -> poly_name LPAREN id_list RPAREN
-    parse_poly_name();
+    poly_header_t header;
+    header.name = parse_poly_name();
     Token t = lexer.peek(1);
     if (t.token_type == LPAREN) {
         expect(LPAREN);
-        parse_id_list();
+        header.id_list = parse_id_list();
         expect(RPAREN);
+    } else {
+        header.id_list = make_list("x");
     }
 }
 
-void Parser::parse_poly_name() {
-    // poly_name -> ID
-    expect(ID);
+vector<Token> make_list(string id_name) {
+    vector<Token> ids;
+    Token t;
+    t.lexeme = id_name;
+    t.token_type = ID;
+    ids.push_back(t);
+    return ids;
 }
 
-void Parser::parse_id_list() {
+Token Parser::parse_poly_name() {
+    // poly_name -> ID
+    return expect(ID);
+}
+
+vector<Token> Parser::parse_id_list() {
     // id_list -> ID
     // id_list -> ID COMMA id_list
-    expect(ID);
+    vector<Token> ids;
+    ids.push_back(expect(ID));
     Token t = lexer.peek(1);
     if (t.token_type == COMMA) {
         expect(COMMA);
-        parse_id_list();
+        vector<Token> more_ids = parse_id_list();
+        ids.insert(ids.end(), more_ids.begin(), more_ids.end());
     }
+    return ids;
 }
 
 int main()

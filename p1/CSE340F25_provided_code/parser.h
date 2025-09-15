@@ -7,7 +7,23 @@
 #define __PARSER_H__
 
 #include <string>
+#include <vector>
 #include "lexer.h"
+
+struct poly_header_t {
+    Token name;
+    std::vector<Token> id_list;
+};
+
+struct poly_body {
+	
+};
+
+struct poly_decl_t {
+	poly_header_t header;
+	poly_body body;
+};
+
 
 class Parser {
   public:
@@ -25,10 +41,11 @@ class Parser {
     void parse_inputs_section();
     void parse_num_list();
     void parse_poly_decl_list();
-    void parse_poly_decl();
-    void parse_poly_header();
-    void parse_poly_name();
-    void parse_id_list();
+    poly_decl_t parse_poly_decl();
+    poly_header_t parse_poly_header();
+    std::vector<Token> make_list(string id_name);
+    Token parse_poly_name();
+    std::vector<Token> parse_id_list();
     void parse_term_list();
     void parse_poly_body();
     void parse_term();
