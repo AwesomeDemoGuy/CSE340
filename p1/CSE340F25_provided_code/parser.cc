@@ -16,7 +16,7 @@ using namespace std;
 // You should provide the syntax error message for this function
 void Parser::syntax_error()
 {
-    cout << "SYNTAX ERROR !!!!!&%!!!!&%!!!!!!";
+    cout << "SYNTAX ERROR !!!!!&%!!!!&%!!!!!!\n";
     exit(1);
 }
 
@@ -64,13 +64,17 @@ Token Parser::expect(TokenType expected_type)
 
 vector<poly_decl_t> polynomials; // global data structure
 
+void Parser::parse_input() {
+    parse_program();
+    expect(END_OF_FILE);
+}
+
 void Parser::parse_program() {
     // program -> tasks_section poly_section execute_section inputs_section
     parse_tasks_section();
     parse_poly_section();
     parse_execute_section();
     parse_inputs_section();
-    expect(END_OF_FILE);
 }
 
 void Parser::parse_inputs_section() {
@@ -218,26 +222,24 @@ poly_decl_t Parser::parse_poly_decl() {
     poly_decl_t decl;
     decl.header = parse_poly_header();
     expect(EQUAL);
-    decl.body = parse_poly_body();
+    parse_poly_body(decl);
     expect(SEMICOLON);
     return decl;
 }
 
-void Parser::parse_poly_body() {
-    // poly_body -> term_list
-    poly_body b;
-    
-    parse_term_list();
+void Parser::parse_poly_body(poly_decl_t &poly_decl) {
+    // poly_body -> term_list    
+    parse_term_list(poly_decl);
 }
 
-void Parser::parse_term_list() {
+void Parser::parse_term_list(poly_decl_t &poly_decl) {
     // term_list -> term
     // term_list -> term add_operator term_list
-    parse_term();
+    parse_term(poly_decl);
     Token t = lexer.peek(1);
     if (t.token_type == PLUS || t.token_type == MINUS) {
         parse_add_operator();
-        parse_term_list();
+        parse_term_list(poly_decl);
     }
 }
 
@@ -254,43 +256,53 @@ void Parser::parse_add_operator() {
     }
 }
 
-void Parser::parse_term() {
+void Parser::parse_term(poly_decl_t &poly_decl) {
     // term -> monomial_list                // ID ID*
     // term -> coefficient monomial_list    // NUM ID ID*
     // term -> coefficient                  // NUM
     // term -> parenthesized_list           // ( term_list ) parenthesized_list*
     Token t = lexer.peek(1);
     if (t.token_type == ID) {
-        parse_monomial_list();
+        parse_monomial_list(poly_decl);
     } else if (t.token_type == NUM) {
         parse_coefficient();
-        Token t2 = lexer.peek(2);
+        Token t2 = lexer.peek(1);
         if (t2.token_type == ID) {
-            parse_monomial_list();
+            parse_monomial_list(poly_decl);
         }
     } else if (t.token_type == LPAREN) {
-        parse_parenthesized_list();
+        parse_parenthesized_list(poly_decl);
     } else {
         syntax_error();
     }
 }
 
-void Parser::parse_monomial_list() {
+void Parser::parse_monomial_list(poly_decl_t &poly_decl) {
     // monomial_list -> monomial
     // monomial_list -> monomial monomial_list
-    parse_monomial();
+    parse_monomial(poly_decl);
     Token t = lexer.peek(1);
     if (t.token_type == ID) {
-        parse_monomial_list();
+        parse_monomial_list(poly_decl);
     }
 }
 
-void Parser::parse_monomial() {
+void Parser::parse_monomial(poly_decl_t &poly_decl) {
     // monomial -> ID
     // monomial -> ID exponent
-    expect(ID);
-    Token t = lexer.peek(1);
-    if (t.token_type == POWER) {
+    Token t = expect(ID);
+    bool found = false;
+    for (int i = 0; i < poly_decl.header.id_list.size(); i++) {
+        if (t.lexeme == poly_decl.header.id_list[i].lexeme) {
+            found = true;
+            break;
+        }
+    }
+    if (!found) {
+        IM_4.push_back(t);
+    }
+    Token t2 = lexer.peek(1);
+    if (t2.token_type == POWER) {
         parse_exponent();
     }
 }
@@ -301,15 +313,15 @@ void Parser::parse_exponent() {
     expect(NUM);
 }
 
-void Parser::parse_parenthesized_list() {
+void Parser::parse_parenthesized_list(poly_decl_t &poly_decl) {
     // parenthesized_list -> LPAREN term_list RPAREN
     // parenthesized_list -> LPAREN term_list RPAREN parenthesized_list
     expect(LPAREN);
-    parse_term_list();
+    parse_term_list(poly_decl);
     expect(RPAREN);
     Token t = lexer.peek(1);
     if (t.token_type == LPAREN) {
-        parse_parenthesized_list();
+        parse_parenthesized_list(poly_decl);
     }
 }
 
@@ -329,11 +341,12 @@ poly_header_t Parser::parse_poly_header() {
         header.id_list = parse_id_list();
         expect(RPAREN);
     } else {
-        header.id_list = make_list("x");
+        header.id_list = make_list('x');
     }
+    return header;
 }
 
-vector<Token> make_list(string id_name) {
+vector<Token> Parser::make_list(char id_name) {
     vector<Token> ids;
     Token t;
     t.lexeme = id_name;
@@ -370,5 +383,16 @@ int main()
     Parser parser;
 
     //parser.ConsumeAllInput();
-    parser.parse_program();
+    parser.parse_input();
+
+    if (parser.IM_4.size() > 0) {
+        cout << "Semantic Error Code IM-4:";
+        for (int i = 0; i < parser.IM_4.size(); i++) {
+            cout << " ";
+            cout << parser.IM_4[i].line_no;
+        }
+        cout << "\n";
+        exit(1);
+    }
+
 }
