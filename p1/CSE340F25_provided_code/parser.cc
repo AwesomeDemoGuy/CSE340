@@ -9,6 +9,7 @@
  */
 #include <iostream>
 #include <cstdlib>
+#include <algorithm>
 #include "parser.h"
 
 using namespace std;
@@ -137,42 +138,73 @@ void Parser::parse_assign_statement() {
     expect(SEMICOLON);
 }   
 
-void Parser::parse_poly_evaluation() {
+poly_header_t Parser::parse_poly_evaluation() {
     // poly_evaluation -> poly_name LPAREN argument_list RPAREN
-    parse_poly_name();
+    poly_header_t header;
+    header.name = parse_poly_name();
     expect(LPAREN);
-    parse_argument_list();
+    header.id_list = parse_argument_list();
     expect(RPAREN);
+
+    bool found = false;
+    for (size_t i = 0; i < polynomials.size(); i++) {
+        if (polynomials[i].header.name.lexeme == header.name.lexeme) {
+            found = true;
+            break;
+        }
+    }
+    if (!found) {
+        AUP_13.push_back(header.name);
+    } else {
+        // check number of arguments
+    }
+
+    for (size_t i = 0; i < polynomials.size(); i++) {
+        if (polynomials[i].header.name.lexeme == header.name.lexeme) {
+            if (polynomials[i].header.id_list.size() != header.id_list.size()) {
+                NA_7.push_back(header.name);
+            }
+            break;
+        }
+    }
+
+    return header;
 }
 
-void Parser::parse_argument_list() {
+std::vector<Token> Parser::parse_argument_list() {
     // argument_list -> argument
     // argument_list -> argument COMMA argument_list
-    parse_argument();
+    std::vector<Token> args;
+    // ad parse_argument to args
+    args.push_back(parse_argument());
     Token t = lexer.peek(1);
     if (t.token_type == COMMA) {
         expect(COMMA);
-        parse_argument_list();
+        std::vector<Token> more_args = parse_argument_list();
+        args.insert(args.end(), more_args.begin(), more_args.end());
     }
+    return args;
 }
 
-void Parser::parse_argument() {
+Token Parser::parse_argument() {
     // argument -> ID
     // argument -> NUM
     // argument -> poly_evaluation
+    Token arg;
     Token t = lexer.peek(1);
     if (t.token_type == ID) {
         Token t2 = lexer.peek(2);
         if (t2.token_type == LPAREN) {
-            parse_poly_evaluation();
+            arg = parse_poly_evaluation().name;
         } else {
-            expect(ID);
+            arg = expect(ID);
         }
     } else if (t.token_type == NUM) {
-        expect(NUM);
+        arg = expect(NUM);
     } else {
         syntax_error();
     }
+    return arg;
 }
 
 void Parser::parse_tasks_section() {
@@ -204,8 +236,8 @@ void Parser::parse_poly_decl_list() {
     if (polynomials.size() > 0) {
         for (int i = 0; i < polynomials.size(); i++) {
             if (polynomials[i].header.name.lexeme == poly_decl.header.name.lexeme) {
-                cout << "Semantic Error Code DMT-12: <line no 1> <line no 2> ... <line no k>";
-                exit(1);
+                DTM_12.push_back(poly_decl.header.name);
+                break;
             }
         }
     }
@@ -385,11 +417,53 @@ int main()
     //parser.ConsumeAllInput();
     parser.parse_input();
 
+    std::sort(parser.DTM_12.begin(), parser.DTM_12.end(), [](Token a, Token b) {
+        return a.line_no < b.line_no;
+    });
+    if (parser.DTM_12.size() > 0) {
+        cout << "Semantic Error Code DTM-12:";
+        for (int i = 0; i < parser.DTM_12.size(); i++) {
+            cout << " ";
+            cout << parser.DTM_12[i].line_no;
+        }
+        cout << "\n";
+        exit(1);
+    }
+    
+    std::sort(parser.IM_4.begin(), parser.IM_4.end(), [](Token a, Token b) {
+        return a.line_no < b.line_no;
+    });
     if (parser.IM_4.size() > 0) {
         cout << "Semantic Error Code IM-4:";
         for (int i = 0; i < parser.IM_4.size(); i++) {
             cout << " ";
             cout << parser.IM_4[i].line_no;
+        }
+        cout << "\n";
+        exit(1);
+    }
+
+    std::sort(parser.AUP_13.begin(), parser.AUP_13.end(), [](Token a, Token b) {
+        return a.line_no < b.line_no;
+    });
+    if (parser.AUP_13.size() > 0) {
+        cout << "Semantic Error Code AUP-13:";
+        for (int i = 0; i < parser.AUP_13.size(); i++) {
+            cout << " ";
+            cout << parser.AUP_13[i].line_no;
+        }
+        cout << "\n";
+        exit(1);
+    }
+
+    std::sort(parser.NA_7.begin(), parser.NA_7.end(), [](Token a, Token b) {
+        return a.line_no < b.line_no;
+    });
+    if (parser.NA_7.size() > 0) {
+        cout << "Semantic Error Code NA-7:";
+        for (int i = 0; i < parser.NA_7.size(); i++) {
+            cout << " ";
+            cout << parser.NA_7[i].line_no;
         }
         cout << "\n";
         exit(1);

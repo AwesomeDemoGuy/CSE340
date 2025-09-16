@@ -19,12 +19,18 @@ struct poly_decl_t {
 	poly_header_t header;
 };
 
+struct poly_exec_t {
+  poly_header_t header;
+};
 
 class Parser {
   public:
     //void ConsumeAllInput();
     void parse_input();
+    std::vector<Token> DTM_12;
     std::vector<Token> IM_4;
+    std::vector<Token> AUP_13;
+    std::vector<Token> NA_7;
 
   private:
     LexicalAnalyzer lexer;
@@ -56,9 +62,9 @@ class Parser {
     void parse_input_statement();
     void parse_output_statement();
     void parse_assign_statement();
-    void parse_poly_evaluation();
-    void parse_argument_list();
-    void parse_argument();
+    poly_header_t parse_poly_evaluation();
+    std::vector<Token> parse_argument_list();
+    Token parse_argument();
 };
 
 #endif
