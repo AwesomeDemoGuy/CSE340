@@ -6,7 +6,7 @@ POLY
     G = x - 1;
     G
     (Y,
-    Z) = Y + 3 (Y - 2)^2 + Z;
+    Z) = Y + (Y - 2) + Z;
     F1 = x - 2;
     F = x + 2 + 2;
 EXECUTE

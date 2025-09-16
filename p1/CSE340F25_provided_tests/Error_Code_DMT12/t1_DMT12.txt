@@ -4,7 +4,7 @@ POLY
     F = x + 2;
     G = x - 1;
     F(Y,Z) = 3;
-    G(Y,Z) = Y + 3 (Y - 2)^2 + Z;
+    G(Y,Z) = Y + (Y - 2) + Z;
 EXECUTE
     INPUT A;
     w = F(A);
