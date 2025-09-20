@@ -8,6 +8,7 @@
 
 #include <string>
 #include <vector>
+#include <map>
 #include "lexer.h"
 
 struct poly_header_t {
@@ -15,8 +16,20 @@ struct poly_header_t {
   std::vector<Token> id_list;
 };
 
+//
+using Exponent_map = std::map<std::string, int>;
+
+struct term_t {
+  bool parenthesized = false;
+  Token add_operator;
+  int coefficient;
+  Exponent_map exponents; // only applies to monomial lists
+  vector<vector<term_t>> parenthesized_list;
+};
+
 struct poly_decl_t {
 	poly_header_t header;
+  std::vector<term_t> term_list;
 };
 
 struct poly_exec_t {
@@ -27,10 +40,6 @@ class Parser {
   public:
     //void ConsumeAllInput();
     void parse_input();
-    std::vector<Token> DTM_12;
-    std::vector<Token> IM_4;
-    std::vector<Token> AUP_13;
-    std::vector<Token> NA_7;
 
   private:
     LexicalAnalyzer lexer;
@@ -48,15 +57,15 @@ class Parser {
     std::vector<Token> make_list(char id_name);
     Token parse_poly_name();
     std::vector<Token> parse_id_list();
-    void parse_term_list(poly_decl_t &poly_decl);
+    std::vector<term_t> parse_term_list(Token add_operator);
     void parse_poly_body(poly_decl_t &poly_decl);
-    void parse_term(poly_decl_t &poly_decl);
-    void parse_monomial_list(poly_decl_t &poly_decl);
-    void parse_coefficient();
-    void parse_monomial(poly_decl_t &poly_decl);
-    void parse_exponent();
-    void parse_parenthesized_list(poly_decl_t &poly_decl);
-    void parse_add_operator();
+    void parse_term(Token add_operator);
+    void parse_monomial_list(term_t& term);
+    int parse_coefficient();
+    void parse_monomial(term_t& term);
+    int parse_exponent();
+    std::vector<std::vector<term_t>> parse_parenthesized_list(Token add_operator);
+    Token parse_add_operator();
     void parse_statement_list();
     void parse_statement();
     void parse_input_statement();
@@ -65,6 +74,15 @@ class Parser {
     poly_header_t parse_poly_evaluation();
     std::vector<Token> parse_argument_list();
     Token parse_argument();
+
+    std::vector<Token> DMT_12;
+    std::vector<Token> IM_4;
+    std::vector<Token> AUP_13;
+    std::vector<Token> NA_7;
+    std::vector<Token> Tasks;
+    std::vector<poly_decl_t> Polynomials;
+
+    void display_polynomials();
 };
 
 #endif

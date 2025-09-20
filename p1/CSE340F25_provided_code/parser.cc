@@ -63,11 +63,68 @@ Token Parser::expect(TokenType expected_type)
 //     }
 // }
 
-vector<poly_decl_t> polynomials; // global data structure
-
 void Parser::parse_input() {
     parse_program();
     expect(END_OF_FILE);
+
+    sort(DMT_12.begin(), DMT_12.end(), [](Token a, Token b) {
+        return a.line_no < b.line_no;
+    });
+    if (DMT_12.size() > 0) {
+        cout << "Semantic Error Code DMT-12:";
+        for (int i = 0; i < DMT_12.size(); i++) {
+            cout << " ";
+            cout << DMT_12[i].line_no;
+        }
+        cout << "\n";
+        exit(1);
+    }
+    
+    sort(IM_4.begin(), IM_4.end(), [](Token a, Token b) {
+        return a.line_no < b.line_no;
+    });
+    if (IM_4.size() > 0) {
+        cout << "Semantic Error Code IM-4:";
+        for (int i = 0; i < IM_4.size(); i++) {
+            cout << " ";
+            cout << IM_4[i].line_no;
+        }
+        cout << "\n";
+        exit(1);
+    }
+
+    sort(AUP_13.begin(), AUP_13.end(), [](Token a, Token b) {
+        return a.line_no < b.line_no;
+    });
+    if (AUP_13.size() > 0) {
+        cout << "Semantic Error Code AUP-13:";
+        for (int i = 0; i < AUP_13.size(); i++) {
+            cout << " ";
+            cout << AUP_13[i].line_no;
+        }
+        cout << "\n";
+        exit(1);
+    }
+
+    sort(NA_7.begin(), NA_7.end(), [](Token a, Token b) {
+        return a.line_no < b.line_no;
+    });
+    if (NA_7.size() > 0) {
+        cout << "Semantic Error Code NA-7:";
+        for (int i = 0; i < NA_7.size(); i++) {
+            cout << " ";
+            cout << NA_7[i].line_no;
+        }
+        cout << "\n";
+        exit(1);
+    }
+
+    for (Token t : Tasks) {
+        if (t.lexeme == "3") {
+            display_polynomials();
+            break;
+        }
+    }
 }
 
 void Parser::parse_program() {
@@ -147,8 +204,8 @@ poly_header_t Parser::parse_poly_evaluation() {
     expect(RPAREN);
 
     bool found = false;
-    for (size_t i = 0; i < polynomials.size(); i++) {
-        if (polynomials[i].header.name.lexeme == header.name.lexeme) {
+    for (size_t i = 0; i < Polynomials.size(); i++) {
+        if (Polynomials[i].header.name.lexeme == header.name.lexeme) {
             found = true;
             break;
         }
@@ -159,9 +216,9 @@ poly_header_t Parser::parse_poly_evaluation() {
         // check number of arguments
     }
 
-    for (size_t i = 0; i < polynomials.size(); i++) {
-        if (polynomials[i].header.name.lexeme == header.name.lexeme) {
-            if (polynomials[i].header.id_list.size() != header.id_list.size()) {
+    for (size_t i = 0; i < Polynomials.size(); i++) {
+        if (Polynomials[i].header.name.lexeme == header.name.lexeme) {
+            if (Polynomials[i].header.id_list.size() != header.id_list.size()) {
                 NA_7.push_back(header.name);
             }
             break;
@@ -171,16 +228,16 @@ poly_header_t Parser::parse_poly_evaluation() {
     return header;
 }
 
-std::vector<Token> Parser::parse_argument_list() {
+vector<Token> Parser::parse_argument_list() {
     // argument_list -> argument
     // argument_list -> argument COMMA argument_list
-    std::vector<Token> args;
+    vector<Token> args;
     // ad parse_argument to args
     args.push_back(parse_argument());
     Token t = lexer.peek(1);
     if (t.token_type == COMMA) {
         expect(COMMA);
-        std::vector<Token> more_args = parse_argument_list();
+        vector<Token> more_args = parse_argument_list();
         args.insert(args.end(), more_args.begin(), more_args.end());
     }
     return args;
@@ -216,9 +273,10 @@ void Parser::parse_tasks_section() {
 void Parser::parse_num_list() {
     // num_list -> NUM
     // num_list -> NUM num_list
-    expect(NUM);
-    Token t = lexer.peek(1);
-    if (t.token_type == NUM) {
+    Token t = expect(NUM);
+    Tasks.push_back(t);
+    Token t2 = lexer.peek(1);
+    if (t2.token_type == NUM) {
         parse_num_list();
     }
 }
@@ -233,15 +291,15 @@ void Parser::parse_poly_decl_list() {
     // poly_decl_list -> poly_decl
     // poly_decl_list -> poly_decl poly_decl_list
     poly_decl_t poly_decl = parse_poly_decl();
-    if (polynomials.size() > 0) {
-        for (int i = 0; i < polynomials.size(); i++) {
-            if (polynomials[i].header.name.lexeme == poly_decl.header.name.lexeme) {
-                DTM_12.push_back(poly_decl.header.name);
+    if (Polynomials.size() > 0) {
+        for (int i = 0; i < Polynomials.size(); i++) {
+            if (Polynomials[i].header.name.lexeme == poly_decl.header.name.lexeme) {
+                DMT_12.push_back(poly_decl.header.name);
                 break;
             }
         }
     }
-    polynomials.push_back(poly_decl);
+    Polynomials.push_back(poly_decl);
     Token t = lexer.peek(1);
     if (t.token_type == ID) {
         parse_poly_decl_list();
@@ -260,72 +318,94 @@ poly_decl_t Parser::parse_poly_decl() {
 }
 
 void Parser::parse_poly_body(poly_decl_t &poly_decl) {
-    // poly_body -> term_list    
-    parse_term_list(poly_decl);
+    // poly_body -> term_list  
+    Token add_operator;
+    add_operator.lexeme = "";
+    add_operator.token_type = PLUS; // default to PLUS for the first term
+    parse_term_list(add_operator);
 }
 
-void Parser::parse_term_list(poly_decl_t &poly_decl) {
+vector<term_t> Parser::parse_term_list(Token add_operator) {
     // term_list -> term
     // term_list -> term add_operator term_list
-    parse_term(poly_decl);
+    vector<term_t> term_list;
+    parse_term(add_operator);
     Token t = lexer.peek(1);
     if (t.token_type == PLUS || t.token_type == MINUS) {
-        parse_add_operator();
-        parse_term_list(poly_decl);
+        Token add_operator = parse_add_operator();
+        // Store the add_operator in the current (last) term
+        
+        parse_term_list(add_operator);
     }
+    return term_list;
 }
 
-void Parser::parse_add_operator() {
+Token Parser::parse_add_operator() {
     // add_operator -> PLUS
     // add_operator -> MINUS
     Token t = lexer.peek(1);
     if (t.token_type == PLUS) {
-        expect(PLUS);
+        return expect(PLUS);
     } else if (t.token_type == MINUS) {
-        expect(MINUS);
+        return expect(MINUS);
     } else {
         syntax_error();
     }
+    // to suppress compiler warning
+    Token dummy;
+    return dummy;
 }
 
-void Parser::parse_term(poly_decl_t &poly_decl) {
+void Parser::parse_term(Token add_operator) {
     // term -> monomial_list                // ID ID*
     // term -> coefficient monomial_list    // NUM ID ID*
     // term -> coefficient                  // NUM
     // term -> parenthesized_list           // ( term_list ) parenthesized_list*
     Token t = lexer.peek(1);
+    term_t term;
+    term.add_operator = add_operator;
     if (t.token_type == ID) {
-        parse_monomial_list(poly_decl);
+        for (auto id : Parser::Polynomials.back().header.id_list) {
+            term.exponents[id.lexeme] = 0;
+        }
+        term.coefficient = 1;
+        parse_monomial_list(term);
     } else if (t.token_type == NUM) {
-        parse_coefficient();
+        for (auto id : Parser::Polynomials.back().header.id_list) {
+            term.exponents[id.lexeme] = 0;
+        }
+        term.coefficient = parse_coefficient();
+        term.add_operator = add_operator;
         Token t2 = lexer.peek(1);
         if (t2.token_type == ID) {
-            parse_monomial_list(poly_decl);
+            parse_monomial_list(term);
         }
     } else if (t.token_type == LPAREN) {
-        parse_parenthesized_list(poly_decl);
+        term.parenthesized = true;
+        term.parenthesized_list = parse_parenthesized_list(add_operator);
     } else {
         syntax_error();
     }
 }
 
-void Parser::parse_monomial_list(poly_decl_t &poly_decl) {
+void Parser::parse_monomial_list(term_t& term) {
     // monomial_list -> monomial
     // monomial_list -> monomial monomial_list
-    parse_monomial(poly_decl);
+    parse_monomial(term);
     Token t = lexer.peek(1);
     if (t.token_type == ID) {
-        parse_monomial_list(poly_decl);
+        parse_monomial_list(term);
     }
 }
 
-void Parser::parse_monomial(poly_decl_t &poly_decl) {
+void Parser::parse_monomial(term_t& term) {
     // monomial -> ID
     // monomial -> ID exponent
     Token t = expect(ID);
+
     bool found = false;
-    for (int i = 0; i < poly_decl.header.id_list.size(); i++) {
-        if (t.lexeme == poly_decl.header.id_list[i].lexeme) {
+    for (int i = 0; i < Parser::Polynomials.back().header.id_list.size(); i++) {
+        if (t.lexeme == Parser::Polynomials.back().header.id_list[i].lexeme) {
             found = true;
             break;
         }
@@ -333,33 +413,46 @@ void Parser::parse_monomial(poly_decl_t &poly_decl) {
     if (!found) {
         IM_4.push_back(t);
     }
+
+    int exp = 1;
     Token t2 = lexer.peek(1);
     if (t2.token_type == POWER) {
-        parse_exponent();
+        exp = parse_exponent();
     }
+
+    term.exponents[t.lexeme] += exp;
 }
 
-void Parser::parse_exponent() {
+int Parser::parse_exponent() {
     // exponent -> POWER NUM
     expect(POWER);
-    expect(NUM);
+    Token t = expect(NUM);
+    return stoi(t.lexeme);
 }
 
-void Parser::parse_parenthesized_list(poly_decl_t &poly_decl) {
+vector<vector<term_t>> Parser::parse_parenthesized_list(Token add_operator) {
     // parenthesized_list -> LPAREN term_list RPAREN
     // parenthesized_list -> LPAREN term_list RPAREN parenthesized_list
+    vector<vector<term_t>> parenthesized_list;
+
     expect(LPAREN);
-    parse_term_list(poly_decl);
+    vector<term_t> term_list = parse_term_list(add_operator);
+    parenthesized_list.push_back(term_list);
+
     expect(RPAREN);
+
     Token t = lexer.peek(1);
     if (t.token_type == LPAREN) {
-        parse_parenthesized_list(poly_decl);
+        vector<vector<term_t>> more_parenthesized = parse_parenthesized_list(add_operator);
+        parenthesized_list.insert(parenthesized_list.end(), more_parenthesized.begin(), more_parenthesized.end());
     }
+
+    return parenthesized_list;
 }
 
-void Parser::parse_coefficient() {
+int Parser::parse_coefficient() {
     // coefficient -> NUM
-    expect(NUM);
+    return stoi(expect(NUM).lexeme);
 }
 
 poly_header_t Parser::parse_poly_header() {
@@ -406,6 +499,110 @@ vector<Token> Parser::parse_id_list() {
     return ids;
 }
 
+void Parser::display_polynomials() {
+    for (auto poly : Polynomials) {
+        std::cout << poly.header.name.lexeme;
+        if (!(poly.header.id_list.size() == 1 && poly.header.id_list[0].lexeme == "x")) {
+            std::cout << "(";
+            for (int i = 0; i < poly.header.id_list.size(); i++) {
+                std::cout << poly.header.id_list[i].lexeme;
+                if (i != poly.header.id_list.size() - 1) {
+                    std::cout << ",";
+                }
+            }
+            std::cout << ")";
+        }
+        std::cout << " =";
+
+        for (auto &term : poly.term_list) {
+            if (term.parenthesized) {
+                std::cout << " (";
+            }
+            if (term.coefficient != 0) {
+                // Check if the coefficient is 1 by iteself or 1 followed by monomial
+                if (term.coefficient == 1) {
+                    bool is_only_one = true;
+                    for (const auto &exp_pair : term.exponents) {
+                        if (exp_pair.second != 0) {
+                            is_only_one = false;
+                            break;
+                        }
+                    }
+                    if (is_only_one) {
+                        std::cout << " " << "1";
+                    }
+                } else {
+                    std::cout << " " << term.coefficient;
+                }
+            }
+            for (const auto &exp_pair : term.exponents) {
+                if (exp_pair.second > 0) {
+                    std::cout << " " << exp_pair.first;
+                    if (exp_pair.second > 1) {
+                        std::cout << "^" << exp_pair.second;
+                    }
+                }
+            }
+            if (term.ends_paren_group) {
+                std::cout << " )";
+            }
+            if (term.add_operator.token_type == PLUS) {
+                std::cout << " +";
+            } else if (term.add_operator.token_type == MINUS) {
+                std::cout << " -";
+            }
+        }
+
+        /* 
+        for (int i = 0; i < poly.term_list.size(); i++) {
+            if (poly.term_list[i].starts_paren_group) {
+                std::cout << " (";
+            } else {
+                std::cout << " ";
+            }
+
+            if (poly.term_list[i].coefficient.lexeme != "0") {
+                std::cout << poly.term_list[i].coefficient.lexeme;
+            }
+            
+            // Display variables in header order with their exponents
+            for (int j = 0; j < poly.header.id_list.size(); j++) {
+                std::string var = poly.header.id_list[j].lexeme;
+                int exp = poly.term_list[i].exponents[var];
+                if (exp > 0) {
+                    // Add space only if coefficient was not printed or was "0"
+                    if (poly.term_list[i].coefficient.lexeme == "0" || poly.term_list[i].coefficient.lexeme.empty()) {
+                         if (j == 0 || poly.term_list[i].exponents[poly.header.id_list[j-1].lexeme] == 0) {
+                             // no space if it's the very first part of the term
+                         } else {
+                            std::cout << " ";
+                         }
+                    } else {
+                        std::cout << " ";
+                    }
+                    std::cout << var;
+                    if (exp > 1) {
+                        std::cout << "^" << exp;
+                    }
+                }
+            }
+            
+            if (poly.term_list[i].ends_paren_group) {
+                std::cout << ")";
+            }
+
+            // Display add_operator if it exists and this isn't the last term
+            if (poly.term_list[i].add_operator.token_type == PLUS) {
+                std::cout << " +";
+            } else if (poly.term_list[i].add_operator.token_type == MINUS) {
+                std::cout << " -";
+            }
+        }
+        */
+        std::cout << "\n";
+    }
+}
+
 int main()
 {
     // note: the parser class has a lexer object instantiated in it. You should not be declaring
@@ -416,57 +613,4 @@ int main()
 
     //parser.ConsumeAllInput();
     parser.parse_input();
-
-    std::sort(parser.DTM_12.begin(), parser.DTM_12.end(), [](Token a, Token b) {
-        return a.line_no < b.line_no;
-    });
-    if (parser.DTM_12.size() > 0) {
-        cout << "Semantic Error Code DTM-12:";
-        for (int i = 0; i < parser.DTM_12.size(); i++) {
-            cout << " ";
-            cout << parser.DTM_12[i].line_no;
-        }
-        cout << "\n";
-        exit(1);
-    }
-    
-    std::sort(parser.IM_4.begin(), parser.IM_4.end(), [](Token a, Token b) {
-        return a.line_no < b.line_no;
-    });
-    if (parser.IM_4.size() > 0) {
-        cout << "Semantic Error Code IM-4:";
-        for (int i = 0; i < parser.IM_4.size(); i++) {
-            cout << " ";
-            cout << parser.IM_4[i].line_no;
-        }
-        cout << "\n";
-        exit(1);
-    }
-
-    std::sort(parser.AUP_13.begin(), parser.AUP_13.end(), [](Token a, Token b) {
-        return a.line_no < b.line_no;
-    });
-    if (parser.AUP_13.size() > 0) {
-        cout << "Semantic Error Code AUP-13:";
-        for (int i = 0; i < parser.AUP_13.size(); i++) {
-            cout << " ";
-            cout << parser.AUP_13[i].line_no;
-        }
-        cout << "\n";
-        exit(1);
-    }
-
-    std::sort(parser.NA_7.begin(), parser.NA_7.end(), [](Token a, Token b) {
-        return a.line_no < b.line_no;
-    });
-    if (parser.NA_7.size() > 0) {
-        cout << "Semantic Error Code NA-7:";
-        for (int i = 0; i < parser.NA_7.size(); i++) {
-            cout << " ";
-            cout << parser.NA_7[i].line_no;
-        }
-        cout << "\n";
-        exit(1);
-    }
-
 }
